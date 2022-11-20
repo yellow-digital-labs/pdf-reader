@@ -1,11 +1,48 @@
+const express = require("express");
 const fs = require('fs')
 const pdfParse = require('pdf-parse')
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const app = express();
+
+app.use(express.json());
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+app.on("uncaughtException", (err) => {
+  console.error("There was an uncaught error", err);
+  app.exit(1); // mandatory (as per the Node.js docs)
+});
+
+app.listen(5000, () => {
+  console.log("running server on port 5000");
+});
+
+app.get("/", (req, res) => {
+    res.send('<h1>Welcome</h1>');
+});
+
+app.get("/get/pdf/data", async (req, res) => {
+    try{
+        const path = req.query.path || './sample-5.pdf';
+        var pdfData = await getPDF(path);
+        if(pdfData){
+            res.send({ code: 200, message: JSON.stringify(pdfData) });
+        } else {
+            res.send({ code: 616, message: "issue in reading a PDF file." });
+        }
+    }
+    catch(err){
+        res.send({ code: 616, message: "something went wrong. Please try again." });
+    }
+});
+
 const getPDF = async (file) => {
     let readFileSync = fs.readFileSync(file)
     try {
         let pdfExtract = await pdfParse(readFileSync)
         var textArr = pdfExtract.text.toString().split('\n').filter(function(e){return e.trim().replace(/\t/g, "")});
-        console.log("textArr", textArr)
         var policy_no, email, name, mobile, address, policy_start_date, policy_end_date, amount;
         for(var i = 0; i < textArr.length; i++){
             //policy no
@@ -61,7 +98,7 @@ const getPDF = async (file) => {
             }
         }
 
-        console.log({
+        return {
             policy_no: policy_no,
             email: email,
             name: name,
@@ -70,10 +107,8 @@ const getPDF = async (file) => {
             policy_start_date: policy_start_date,
             policy_end_date: policy_end_date,
             amount: amount
-        })
+        };
     } catch (error) {
-        throw new Error(error)
+        return false;
     }
 }
-const pdfRead = './sample-5.pdf'
-getPDF(pdfRead)
